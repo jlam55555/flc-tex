@@ -9,6 +9,26 @@
 
 \todo{list each opcode, describe it, show its behavior using the state machine}
 
+\begin{description}
+\item[\texttt{Pushglobal} $f$]
+\item[\texttt{Pushint} $n$] 
+\item[\texttt{Push} $n$] 
+\item[\texttt{Update} $n$] 
+\item[\texttt{Pop} $n$]   
+\item[\texttt{Alloc} $n$]
+\item[\texttt{Slide} $n$]
+\item[\texttt{Unwind}]
+\item[\texttt{Mkap}]
+\item[\texttt{Eval}]
+\item[\texttt{Add}, \texttt{Sub}, \texttt{Mul}, \texttt{Div}, \texttt{Neg}]
+\item[\texttt{Eq}, \texttt{Ne}, \texttt{Lt}, \texttt{Le}, \texttt{Gt}, \texttt{Ge}]
+\item[\texttt{Pack} $t$ $n$]
+\item[\texttt{Casejump} $rules$] 
+\item[\texttt{Split} $n$] 
+\item[\texttt{Print}] 
+
+\end{description}
+
 \subsection{Compilation schemes}
 \label{sec:compilation-schemes}
 
