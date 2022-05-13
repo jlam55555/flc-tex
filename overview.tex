@@ -6,24 +6,46 @@
 
 This project was the semester-long project for the ECE491 independent study on advanced compilers. It is the implementation of a simple lazy (normal-order) evaluation functional language similar to Haskell. The work follows the tutorial, ``Implementing functional languages: a tutorial'' by Simon Peyton Jones at Microsoft Research \cite{jones2000implementing}. This was published two years after Haskell 1.0 was defined in 1990 \cite{hudak2007history}, to which SPJ was a major contributor.
 
-This project is the culmination of my studies in programming languages and functional programming over the past two years. These studies include writing a C compiler in C (Spring 2021), a LISP interpreter in LISP (Summer 2021), and this project, a Core interpreter and compiler in Haskell (Spring 2022). Additionally, my Master's thesis (2021-2022 school year) was about updating the evaluation model of Hazel, a programming language implemented in OCaml. We can summarize these languages in \Cref{tab:pl-implementations-summary}.
+This project is the culmination of my studies in programming languages and functional programming over the past two years. These studies include writing a C compiler in C (Spring 2021), a Scheme (LISP) interpreter in Scheme (Summer 2021), and this project, a Core interpreter and compiler in Haskell (Spring 2022). Additionally, my Master's thesis (2021-2022 school year) was about updating the evaluation model of Hazel, a programming language implemented in OCaml. We summarize these languages in \Cref{tab:pl-implementations-summary}.
 
 \begin{table}
   \centering
   \begin{tabular}{r|c|c}
     & Purely functional & Non-purely functional \\
     \hline
-    Untyped & Core & Scheme\footnote{Mostly-functional} \\
-    Typed & Hazel\footnote{Gradually-typed} & C\footnote{Weakly-typed}
+    Untyped & Core & Scheme\footnotemark \\
+    Typed & Hazel\footnotemark & C\footnotemark
   \end{tabular}
   \caption{Summary of programming language implementation projects}
   \label{tab:pl-implementations-summary}
 \end{table}
 
+% https://tex.stackexchange.com/a/109470
+\addtocounter{footnote}{-2}
+\footnotetext[1]{Mostly functional}
+\addtocounter{footnote}{1}
+\footnotetext{Gradually-typed}
+\addtocounter{footnote}{1}
+\footnotetext{Weakly-typed}
+
 \subsection{Commentary on the tutorial}
 \label{sec:tutorial-commentary}
+
+The tutorial used for this project assumes a basic understanding of functional programming and a non-strict language such as Miranda or Haskell. For this report, we do not assume this and give a brief introduction to these ideas.
+
+The text is largely in tutorial format, in that it provides much of the code for the reader to follow along with, but it is also in large part similar to a textbook. While much of the base code is given, much of the implementation is left in the form of non-trivial exercises to be completed using the provided theory. As the book progresses, less code is provided directly; rather, the semantics are given using the state transition notation, and the reader is asked to implement this in code.
+
+The structure of the tutorial goes as follows: Chapter 1 introduces the Core language. Chapter 2 provides an evaluator implementation called the Template Instantiation (TI) evaluator, which we will describe in \Cref{sec:ti}. Chapter 3 provides a compiled version of the TI evaluator, called the G-Machine\footnote{``G'' for ``graph,'' most likely.} (GM), which we will describe in \Cref{sec:gm}. We note that Haskell officially uses a Spineless Tagless G-Machine (STG) \cite{jones1992implementing}.
+
+Chapter 4 describes the Three-Address Machine compiled implementation, and Chapter 5 describes the Parallel G-Machine. The G-Machine (a stack-based machine) may be translated into a TAM representation. Chapter 6 introduces the $\lambda$-abstraction syntax using the $\lambda$-lifting program transformation. Chapters 4-6 were not covered for this independent study.
+
+Rather than developing each implementation vertically (e.g., finishing the lexer, then the parser, then the intermediate representation, then exporting opcodes), the tutorial uses a horizontally incremental development method. In this style of development, we first complete a base implementation of only the core language features, and then incrementally add support for new language features. The tutorial calls these horizontal versions ``marks,'' i.e., ``TI Mark 3'' or ``GM Mark 7.''
+
+I greatly enjoyed the tutorial and found the exercises delightfully challenging and enlightening. My only complaints with the tutorial are that sometimes the exercises seemed to require knowledge from future marks, and that the names of certain concepts seem to be arbitrarily named\footnote{For example, the compilation schemes are named with arbitrary letters, and the ``G'' in ``G-Machine'' and the ``I'' in ``\texttt{Iseq}'' are never explained.}.
 
 \subsection{Implementation setup}
 \label{sec:implementation-setup}
 
-\todo{github repo (all three, including this one)}
+My implementation is called \texttt{flc}, short for ``fun(ctional) lazy compiler.'' \texttt{flc} is written in Haskell, similar to the tutorial\footnote{The tutorial says it was written in Miranda, but I am not sure if this is correct. All of the code samples run successfully in Haskell, and I believe that Miranda's syntax is somewhat different.}. Instructions for use may be found on the GitHub's README.
+
+The implementation may be found at \href{https://github.com/jlam55555/fun-lazy-compiler}{jlam55555/fun-lazy-compiler}. A transpiler for the GM Mark 1 to x86-64 assembly code may be found at \href{https://github.com/jlam55555/flc-transpiler}{jlam55555/flc-transpiler}.

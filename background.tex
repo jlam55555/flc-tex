@@ -1,12 +1,27 @@
 \section{Background}
 \label{sec:background}
 
+This section provides brief background on programming language theory from a functional perspective.
+
 \subsection{Definition of a programming language}
 \label{sec:pl-definition}
 
-\todo{syntax, semantics}
+\textit{Interfaces} are necessary for efficient and effective communication. A \textit{programming language} serves as an interface between humans and computers. To rigorously work with a programming language, we define its \textit{syntax} and \textit{semantics}.
 
-\todo{notation used for dynamic semantics here: state machine?}
+The syntax of a programming language describes the way valid expressions and programs are formed. It is specified using a \textit{grammar}. The grammar for the untyped $\lambda$-calculus $\Lambda$ is shown in \Cref{fig:ulc-grammar}.
+
+\begin{figure}
+  \centering
+  \begin{align*}
+    e ::= \lambda x.e \mid x \mid e\ e
+  \end{align*}
+  \caption{Grammar of $\Lambda$}
+  \label{fig:ulc-grammar}
+\end{figure}
+
+The \textit{semantics} of a programming language describes its behavior. The \textit{static semantics} denotes the behavior of processes that happen prior to evaluation, such as type checking. The \textit{dynamic semantics} describes the behavior of \textit{evaluation}. Evaluation is the process of reducing an expression down to a \textit{value}, or irreducible expression.
+
+For this project, we actually define two languages: the Core language, and the abstract 
 
 \subsection{Implementations of programming language}
 \label{sec:pl-implementation}
