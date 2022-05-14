@@ -10,22 +10,22 @@
 \todo{list each opcode, describe it, show its behavior using the state machine}
 
 \begin{description}
-\item[\texttt{Pushglobal} $f$]
-\item[\texttt{Pushint} $n$] 
-\item[\texttt{Push} $n$] 
-\item[\texttt{Update} $n$] 
-\item[\texttt{Pop} $n$]   
-\item[\texttt{Alloc} $n$]
-\item[\texttt{Slide} $n$]
-\item[\texttt{Unwind}]
-\item[\texttt{Mkap}]
-\item[\texttt{Eval}]
-\item[\texttt{Add}, \texttt{Sub}, \texttt{Mul}, \texttt{Div}, \texttt{Neg}]
-\item[\texttt{Eq}, \texttt{Ne}, \texttt{Lt}, \texttt{Le}, \texttt{Gt}, \texttt{Ge}]
-\item[\texttt{Pack} $t$ $n$]
-\item[\texttt{Casejump} $rules$] 
-\item[\texttt{Split} $n$] 
-\item[\texttt{Print}] 
+\item[\texttt{Pushglobal} $f$] Push the address of the global (supercombinator) $f$ onto the stack\footnote{This is overloaded in Mark 6 for a technicality regarding unsaturated data constructors. This is Exercise 3.38.}.
+\item[\texttt{Pushint} $n$] Push the address of an integer node representing the integer $n$ onto the stack. If such an integer node representing the integer $n$ already exists, this may use that existing address; otherwise, this will allocate a new integer node $n$.
+\item[\texttt{Push} $n$] Push the $n$-th address of the stack onto the stack.
+\item[\texttt{Update} $n$] Set the node pointed to by the $n$-th address of the stack to an indirection node pointing to the top element of the stack, then pop one element from the stack.
+\item[\texttt{Pop} $n$] Pop $n$ elements from the stack.
+\item[\texttt{Alloc} $n$] Push $n$ invalid addresses onto the stack, or decrease the stack pointer by $n$ \footnote{This is used for \texttt{letrec} expressions. These addresses initially point to an invalid node, and will be updated by the evaluation of the definiens.}.
+\item[\texttt{Slide} $n$] ``Slide'' the top element of the stack up $n$ slots. In other words, the $(n+1)$-th element of the stack will be replaced with the top of the stack, and then $n$ elements will be popped.
+\item[\texttt{Unwind}] Same as in the TI implementation \Cref{sec:ti-unwind}.
+\item[\texttt{Mkap}] Pop two elements from the stack, allocate a new application node (with the first popped element in function position, and the second popped element in argument position) and push the application node onto the stack.
+\item[\texttt{Eval}] Strictly evaluate the element on the top of the stack to WHNF on a new stack (frame)\footnote{This pushes a new stack on the dump and evaluates the node on the new stack. This is more or less equivalent to a function call in the conventional procedural ABIs.}.
+\item[\texttt{Add}, \texttt{Sub}, \texttt{Mul}, \texttt{Div}, \texttt{Neg}] Arithmetic binary and unary operators. Assumes the two elements on the top of the stack are evaluated to integers (otherwise will crash the program). Pops the top two elements and leaves a number node on the top of the stack representing the arithmetic result.
+\item[\texttt{Eq}, \texttt{Ne}, \texttt{Lt}, \texttt{Le}, \texttt{Gt}, \texttt{Ge}] Relational binary operators. Assumes the two elements on the top of the stack are evaluated to booleans in the standard representation (otherwise will crash the program). Pops the top two elements and leaves a node on the top of the stack representing the boolean result in the standard representation.
+\item[\texttt{Pack} $t$ $n$] Pops $n$ addresses from the stack. Allocate and push a structured data node representing structured data with tag $t$ and the $n$ popped arguments.
+\item[\texttt{Casejump} $rules$] $rules$ is of the form $\{t_j\to [i_1,i_2,\dots]\}$: a mapping of tags $t_j$ to code sequences $[i_1,i_2,\dots]$. Assumes the top of the stack is the scrutinee of a \texttt{case} expression, and thus a data node with tag $t$. Appends the instruction list of the appropriate rule onto the current instruction queue. Throws an error if the scrutinee is not a structured data node or if there is no match.
+\item[\texttt{Split} $n$] Assumes the top of the stack is a structured data node. Pops it from the stack, and then pushes its $n$ arguments onto the stack.
+\item[\texttt{Print}] Output the top element on the stack. Assumes that it is a data node (integer or structured data node). Recursively generates additional \texttt{Print} and \texttt{Eval} opcodes for structured data.
 
 \end{description}
 
