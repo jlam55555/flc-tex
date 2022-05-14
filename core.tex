@@ -4,24 +4,111 @@
 \subsection{Syntax}
 \label{sec:syntax}
 
+The grammar of Core is given in \Cref{fig:core-syntax}. This is reproduced from Figure 1.1 in the tutorial. $\lambda$-abstractions are omitted from the syntax, since they are only introduced in Chapter 6 with the introduction of the $\lambda$-lifting program transformation.
+
+Core may be thought of as $\Lambda$ extended with number types, arithmetic and boolean operators, structured data, \texttt{let(rec)} expressions, and \texttt{case} expressions. The top-level of a program is simply a sequence of semicolon-delimited supercombinator definitions.
+
+\begin{figure}
+  \centering
+  \begin{align*}
+    program & ::= sc_1\ ;\ \cdots\ ;\ sc_n\tag{top-level program} \\
+    sc & ::= fn\ var_1\ \cdots\ var_n = expr\tag{supercombinator} \\
+    expr & ::= expr\ aexpr\tag{application} \\
+            & \ \ \ \mid expr_1\ binop\ expr_2\tag{infix binary application} \\
+            & \ \ \ \mid \mathtt{let}\ defns\ \mathtt{in}\ expr\tag{local definition(s)} \\
+            & \ \ \ \mid \mathtt{letrec}\ defns\ \mathtt{in}\ expr\tag{local recursive definition(s)} \\
+            & \ \ \ \mid \mathtt{case}\ expr\ \mathtt{of}\ alts\tag{\texttt{case} expression} \\
+            & \ \ \ \mid aexpr\tag{atomic expression} \\
+    aexpr & ::= var\tag{variable} \\
+            & \ \ \ \mid num\tag{number (integer)} \\
+            & \ \ \ \mid \mathtt{Pack\{}num,num\mathtt{\}}\tag{data constructor} \\
+            & \ \ \ \mid (\ expr\ )\tag{parenthesized expression} \\
+    defns & ::= defn_1\ ;\ \cdots\ ;\ defn_n\tag{definitions} \\
+    defn & ::= var=expr\tag{definition} \\
+    alts & ::= alt_1\ ;\ \cdots\ ;\ alt_n\tag{\texttt{case} alternatives (rules)} \\
+    alt & ::= \mathtt{<} num \mathtt{>}\ var_1\ \cdots\ var_n\ \mathtt{->}\ expr\tag{\texttt{case} alternative} \\
+    binop & ::= arithop \mid relop \mid boolop\tag{binary operators} \\
+    arithop & ::= \mathtt{+} \mid \mathtt{-} \mid \mathtt{*} \mid \mathtt{/}\tag{arithmetic ops} \\
+    relop & ::= \mathtt{<} \mid \mathtt{<=} \mid \mathtt{==} \mid \mathtt{\sim=} \mid \mathtt{>=} \mid \mathtt{>}\tag{comparison ops} \\
+    boolop & ::= \mathtt{\&} \mid \mathtt{|}\tag{boolean ops} \\
+    var & ::= alpha\ varch_1\ \cdots\ varch_n]tag{variables} \\
+    alpha & ::= \text{an alphabetic character}\tag{identifiers 1} \\
+    varch & ::= alpha\mid digit\mid \_\tag{identifiers 2} \\
+    num & ::= digit_1\ \cdots\ digit_n\tag{numbers}
+  \end{align*}
+  \caption{BNF syntax for the Core language}
+  \label{fig:core-syntax}
+\end{figure}
+
 \subsection{Dynamic semantics}
 \label{sec:dynamic-semantics}
 
-\todo{function application and basic forms have the same dynamic semantics as the lambda calculus, except using an environment to store variable bindings rather than using substitution}
+The dynamic semantics of basic function application in Core is the same as $\Lambda$, taking into account currying. The rest of the expression forms should be fairly clear, and are familiar for those acquainted with Haskell or other functional languages with local definitions, algebraic datatypes, and pattern matching.
+
+The expression forms to note are \texttt{let(rec)} expressions, \texttt{case} expressions, and data constructors using the \texttt{Pack\{t,a\}} expression form. \texttt{let} expressions allow for a series of local variable bindings. \texttt{letrec} expressions allow for a series of local variable bindings, but all of the variables being defined are in scope of the other variables being defined (e.g., allowing for mutually-recursive definitions)\footnote{Neither \texttt{let} nor \texttt{letrec} expressions are too important for a language like Core. The same functionality may be implemented with supercombinator definitions (including mutual recursion), but local definitions afford greater convenience.}. \texttt{Pack} and \texttt{case} are used to construct and destruct structured data, respectively, in a simple form without introducing user-defined data constructors such as in Haskell. \Cref{fig:structured-data-example} demonstrates the use of both of these forms with an implementation of \texttt{length}, a function to compute the length of a linked-list ADT.
+
+\begin{figure}
+  \begin{subfigure}{\textwidth}
+    \begin{minted}[frame=single]{haskell}
+data ListNode = Nil | Cons Int ListNode
+
+length xs = case xs of
+  Nil -> 0
+  Cons _ xs' -> 1 + length xs'
+
+main =
+  let lst = Cons 2 (Cons 3 (Cons 4 Nil))
+  in length lst -- returns ``3''
+    \end{minted}
+    \caption{Structured data in Haskell}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \begin{minted}[frame=single]{text}
+-- Nil is represented with Pack{3, 0}
+-- Cons(x, y) is represented with Pack{4, 2}
+length xs = case xs of
+  <3> -> 0 ;
+  <4> x xs -> 1 + length xs
+
+main =
+  let lst = Pack{4,2} 2 (Pack{4,2} 3 (Pack{4,2} 4 Pack{3,0}))
+  in length lst -- returns ``3''
+    \end{minted}
+    \caption{Structured data in Core}
+  \end{subfigure}
+  \caption{Structured data usage}
+  \label{fig:structured-data-example}
+\end{figure}
 
 \subsection{Base definitions}
 \label{sec:core-base}
 
-\todo{standard representations (booleans, list constructors), standard definitions/prelude (e.g., if, simple combinators, standard representations)}
+We adopt the the conventions shown in \Cref{fig:standard-representations}. These represent canonical/standard representations of booleans, lists, and the \texttt{if} expression using previously-defined expressions\footnote{My conventions are slightly different from the textbook's ones, but this is only really a matter of style.}. Note that different structured data do not necessarily need to have globally distinct tags; only different variants of the same ADT need be unique. For simplicity, we make all of the ADTs have unique tags, and reserve tags 1 through 4 for these\footnote{This is a soft restriction.}.
+
+\begin{figure}
+  \centering
+  \begin{minted}[frame=single]{text}
+False = Pack{1, 0} ;
+True = Pack{2, 0} ;
+Nil = Pack{3, 0} ;
+Cons = Pack{4, 2} ;
+if scrut t f =
+  case scrut of
+    <1> -> f ;
+    <2> -> t
+  \end{minted}
+  \caption{Standard representations of structured data and \texttt{if} expressions}
+  \label{fig:standard-representations}
+\end{figure}
+
+This forms part of our \textit{prelude} (builtin definitions) for Core, and these definitions may be overridden at any time. Additionally, we provide a sample standard library in the \texttt{examples/gmprelude.core} file in the GitHub repository.
+
+We also include many other useful definitions, such as common combinators, arithmetic aggregation operators, list/stream operations, etc. in the prelude. These may be found in \Cref{sec:core-stdlib}.
 
 \subsection{Sample programs}
 \label{sec:sample-programs}
 
-\todo{show basic forms}
-
-\todo{twice twice twice}
-
-\todo{show algebraic datatypes}
+Sample Core code may be found in \Cref{sec:code-samples}.
 
 \subsection{Lexer}
 \label{sec:lexer}
