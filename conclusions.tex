@@ -1,8 +1,16 @@
 \section{Conclusions}
 \label{sec:conclusions}
 
-\todo{got things to work as expected}
+This tutorial teaches how to efficiently evaluate a pure lazy functional language. First, an intuitive method involving lazy graph reduction called the Template Instantiation (TI) evaluator is introduced. The runtime of the TI comprises alternating graph creation (instantiation) and reduction (unwinding) processes. The efficiency of the runtime is improved by compiling the graph creation process into a series of opcodes in an stack machine, called the G-machine.
 
-\todo{learned a lot about lazy evaluation}
+For this project, I was able to complete both base implementations and achieve the desired results. There is still much of the tutorial that has not been implemented, such as garbage collection, the $\lambda$-lifting program transformation, and other implementations such as the three-address machine and the parallel G-machine.
 
-\todo{lots of future work to do still}
+\section{References}
+\label{sec:references}
+
+\printbibliography[heading=none]{}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:

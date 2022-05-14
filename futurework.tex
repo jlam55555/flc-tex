@@ -1,12 +1,31 @@
 \section{Future work}
 \label{sec:future-work}
 
-\todo{garbage collection}
+\subsection{Garbage collection}
+\label{sec:gc}
 
-\todo{last marks of TI and GM}
+For a functional language, garbage collection in the runtime is very important, since nodes are automatically allocated without control of the user. Garbage collection is covered in the last part of the TI implementation after Mark 6. It was not implemented for sake of time.
 
-\todo{3-address machine and parallel g-machine}
+\subsection{Three-address machine and parallel G-machine}
+\label{sec:future-sections}
 
-\todo{lambda lifting}
+These are two additional implementations of the compiler that are covered in future chapters of the tutorial. Both are very intriguing: the three-address machine is closer to the architecture of many modern CPU architectures, and inherently parallelized reduction is also an interesting idea.
 
-\todo{study implementation of STG}
+\subsection{Particulars of the STG and Haskell's implementation}
+\label{sec:stg}
+
+It will be interesting to study the intricacies of Haskell's implementation. Haskell, despite being a high-level, lazy functional language, is known to be very fast to the point of bafflement\footnote{\url{https://stackoverflow.com/q/35027952}}, with optimized GHC-compiled programs usually only 2 to 5 times slower than gcc-compiled programs\footnote{\url{https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/ghc-gcc.html}}.
+
+We've seen that the graph-reduction mechanism in the TI machine is relatively intuitive, but there is significant complexity in the construction (instantiation) of graphs. The G-machine achieves some efficiency by compiling the construction of a graph to code. It will be interesting to see additional optimizations that allow GHC to achieve its famed performance. While this tutorial is meant to be an introductory tutorial on such machines, it should be formative to read documents specifically about the design of Haskell, such as \cite{jones1992implementing}.
+
+\subsection{Compilation to native binaries}
+\label{sec:future-work-compilation}
+
+We achieved compilation of the Mark 1 G-machine to native binaries using assembly macros and the NASM assembler, as described in \Cref{sec:gm-transpile-x86}. We leave for future work the same work for the Mark 6 G-machine, which is significantly more complicated.
+
+However, it may be more fruitful to attempt this after reading the chapter on the three-address machine, since this chapter should describe the translation from the stack-based machine to a three-address machine. Transpiling the three-address machine to x86-64 opcodes should also be a simpler process.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:

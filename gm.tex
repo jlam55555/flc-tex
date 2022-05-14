@@ -1,17 +1,14 @@
-\section{G-Machine (GM) compiler}
+\section{G-Machine (GM) implementation}
 \label{sec:gm}
-
-\subsection{The GM abstract machine}
-\label{sec:gm-machine}
 
 The G-Machine is an abstract machine with a very similar idea to the TI machine with graph reduction and unwinding. The difference is that the graph creation, which is a complicated process performed by the instantiation step of the TI machine, is compiled into a series of opcodes on a stack-based machine. The unwinding step remains largely the same. The state of the machine is largely the same, with a stack, dump, and heap. Notably, this also includes an instruction queue (which replaces instantiation), and supercombinators are compiled to a sequence of instructions.
 
 This stack-based machine is desirable for several efficiency reasons: it requires a simpler (smaller) runtime; it does not require the re-traversal of a supercombinator's body expression on each expression; and the runtime does not require an expression-level representation of the language.
 
-\subsubsection{List of opcodes}
+\subsection{List of opcodes}
 \label{sec:gm-opcodes}
 
-The list of opcodes of the abstract stack machine that the G-Machine compiles to is given below. For the sake of this document, the dynamic semantics of each opcode is only provided informally. A precise definition of most of the opcodes are given in the tutorial\footnote{Most of the time, the state transition(s) of an opcode are provided, and the implementation of the opcode in Haskell is left as an exercise.}.
+The list of opcodes of the abstract stack machine that the G-Machine compiles to is given below. For the sake of this document, the dynamic semantics of each opcode is only provided informally\footnote{The syntax of this assembly-like language is trivial and need not be stated.}. A precise definition of most of the opcodes are given in the tutorial\footnote{Most of the time, the state transition(s) of an opcode are provided, and the implementation of the opcode in Haskell is left as an exercise.}.
 
 \begin{description}
 \item[\texttt{Pushglobal} $f$] Push the address of the global (supercombinator) $f$ onto the stack\footnote{This is overloaded in Mark 6 for a technicality regarding unsaturated data constructors. This is Exercise 3.38.}.
@@ -28,7 +25,7 @@ The list of opcodes of the abstract stack machine that the G-Machine compiles to
 \item[\texttt{Eq}, \texttt{Ne}, \texttt{Lt}, \texttt{Le}, \texttt{Gt}, \texttt{Ge}] Relational binary operators. Assumes the two elements on the top of the stack are evaluated to booleans in the standard representation (otherwise will crash the program). Pops the top two elements and leaves a node on the top of the stack representing the boolean result in the standard representation.
 \item[\texttt{Pack} $t$ $n$] Pops $n$ addresses from the stack. Allocate and push a structured data node representing structured data with tag $t$ and the $n$ popped arguments.
 \item[\texttt{Casejump} $rules$] $rules$ is of the form $\{t_j\to [i_1,i_2,\dots]\}$: a mapping of tags $t_j$ to code sequences $[i_1,i_2,\dots]$. Assumes the top of the stack is the scrutinee of a \texttt{case} expression, and thus a data node with tag $t$. Appends the instruction list of the appropriate rule onto the current instruction queue. Throws an error if the scrutinee is not a structured data node or if there is no match.
-\item[\texttt{Split} $n$] Assumes the top of the stack is a structured data node. Pops it from the stack, and then pushes its $n$ arguments onto the stack. \todo{note about flatness}
+\item[\texttt{Split} $n$] Assumes the top of the stack is a structured data node. Pops it from the stack, and then pushes its $n$ arguments onto the stack.
 \item[\texttt{Print}] Output the top element on the stack. Assumes that it is a data node (integer or structured data node). Recursively generates additional \texttt{Print} and \texttt{Eval} opcodes for structured data.
 
 \end{description}
@@ -37,6 +34,11 @@ The list of opcodes of the abstract stack machine that the G-Machine compiles to
 \label{sec:compilation-schemes}
 
 \todo{list each compilation scheme, describe it, show its behavior on expression types}
+
+\subsubsection{Non-strict vs. strict compilation context}
+\label{sec:strict-context}
+
+\todo{fit this in nicely with the previous section???}
 
 \subsection{Evaluator}
 \label{sec:evaluator}
@@ -52,6 +54,8 @@ I did not have time to implement later Marks of the G-Machine in assembly code, 
 
 \subsection{Sample compilations and evaluations}
 \label{sec:compiler-examples}
+
+\todo{this section}
 
 %%% Local Variables:
 %%% mode: latex
