@@ -8,7 +8,31 @@ This section provides brief background on programming language theory from a fun
 
 \textit{Interfaces} are necessary for efficient and effective communication. A \textit{programming language} serves as an interface between humans and computers. To rigorously work with a programming language, we define its \textit{syntax} and \textit{semantics}.
 
-The syntax of a programming language describes the way valid expressions and programs are formed. It is specified using a \textit{grammar}. The grammar for the untyped $\lambda$-calculus $\Lambda$ is shown in \Cref{fig:ulc-grammar}.
+The syntax of a programming language describes the way valid expressions and programs are formed. It is specified using a \textit{grammar}. For example, the grammar for the untyped $\lambda$-calculus $\Lambda$ is shown in \Cref{fig:ulc-grammar}.
+
+The \textit{semantics} of a programming language describes its behavior. The \textit{static semantics} denotes the behavior of processes that happen prior to evaluation, such as type checking. The \textit{dynamic semantics} describes the behavior of \textit{evaluation}. Evaluation is the process of reducing an expression down to a \textit{value}, or irreducible expression.
+
+For this project, we define two languages: the Core language, and the abstract stack-based language of the G-machine. The semantics of the Core language is, like many functional languages, highly based on the $\lambda$-calculus. The semantics of the stack-based G-machine language is similar to other stack languages such as Forth.
+
+\subsection{Implementation(s) of a programming language}
+\label{sec:pl-implementation}
+
+A programming language is a specification. There may be multiple \textit{implementations} of a language. The specification and implementations are orthogonal. A single language may have multiple implementations with different performance characteristics and language support. For example, the Core language has four implementations proposed in the tutorial (TI, GM, TAM, PGM); other major languages such as the JVM, Python, or Haskell also have multiple implementations.
+
+We typically classify an implementation into one of two broad classes: \textit{intepreters} (a.k.a. \textit{evaluators}) or \textit{compilers}. The difference is that interpreters take a program's source code and runs it ``directly.'' On the other hand, a compiler performs a two-stage process: compiling to a low-level representation, to be evaluated at some later time. Compiled representations tend to perform better and require simpler \textit{runtimes}. The distinction between interpreters and compilers may not always be clear; in some cases, they form a spectrum delineated by the complexity of the runtime necessary for program evaluation.
+
+In this project, we will examine two separate implementations of the Core language. The first implementation directly encodes the idea of graph template instantiation and reduction. Since all of the graph operations occur within Haskell code (a Haskell runtime), this is an interpreter. We improve this with the G-machine by compiling graph construction to a series of opcodes that may run on a simpler stack-based machine, which may be implemented on many computer architectures with a simpler runtime\footnote{Chapter 4 of the tutorial, which is not implemented for this project, uses a three-address machine, which may require an even simpler runtime on a three-address architecture such as x86-64.}.
+
+\subsection{The untyped $\lambda$-calculus}
+\label{sec:ulc}
+
+The untyped $\lambda$-calculus $\Lambda$ is a very basic model of universal computation\footnote{I.e., $\Lambda$ can simulate a Turing machine.} proposed by Alonzo Church in the 1930's. The grammar of $\Lambda$ is incredibly simple: it is given by \Cref{fig:ulc-grammar}. We only have three expression forms in $\Lambda$: variables (bound by functions), $\lambda$-abstractions (functions of one variable $x$ and return the expression $e$); and function application $e_1\ e_2$, in which $e_1$ is in function position and $e_2$ is in argument position. Note that function application is represented using spaces, and parentheses are only necessary to specify order of operations.
+
+The dynamic semantics are also very simple, illustrated by the rules shown in \Cref{fig:ulc-dynamics} using a big-step operational semantics. Without diving deep into the syntax, this means that $\lambda$-abstractions evaluate to themselves, and the application of $e_1$ to $e_2$ involves (recursively) evaluating  $e_1$ to a $\lambda$-abstraction $\lambda x.e_1'$; substituting $e_2$ for every instance of $x$ in $e_1'$; and then recursively evaluating that result. This is a very simple way to think about function application, and it can be shown that any data or computation can be abstractly represented using this minimalistic representation\footnote{See Church notation.}.
+
+The $\lambda$-calculus serves as the logical and notational basis for much of functional programming, including Haskell and Core. For example, using space as the function application operator originates from the $\lambda$-calculus. Also, lazy evaluation and pure functions mesh very nicely with the more mathematical framework that the $\lambda$-calculus provides, as opposed to the statuful model of imperative programming languages.
+
+However, since $\Lambda$ is so minimalistic, it is not practical nor efficient. Usually we extend $\Lambda$ with static typing, resulting in the simply-typed $\lambda$-calculus (STLC). In our case, we add a base type (integers) and structured data, and extend the grammar with \texttt{let} and \texttt{case} expressions, but do not implement static typing (which runs us the possibility of run-time type errors).
 
 \begin{figure}
   \centering
@@ -19,30 +43,76 @@ The syntax of a programming language describes the way valid expressions and pro
   \label{fig:ulc-grammar}
 \end{figure}
 
-The \textit{semantics} of a programming language describes its behavior. The \textit{static semantics} denotes the behavior of processes that happen prior to evaluation, such as type checking. The \textit{dynamic semantics} describes the behavior of \textit{evaluation}. Evaluation is the process of reducing an expression down to a \textit{value}, or irreducible expression.
-
-For this project, we actually define two languages: the Core language, and the abstract 
-
-\subsection{Implementations of programming language}
-\label{sec:pl-implementation}
-
-\todo{compilers, interpreters}
-
-\subsection{The untyped $\lambda$-calculus}
-\label{sec:ulc}
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule{ }{\lambda x.e\Downarrow\lambda x.e}
+    \and
+    \inferrule{
+      e_1\Downarrow\lambda x.e_1' \\
+      [e_2/x]e_1'\Downarrow e
+    }{e_1\ e_2\Downarrow e}
+  \end{mathpar}
+  \caption{Dynamic semantics of $\Lambda$}
+  \label{fig:ulc-dynamics}
+\end{figure}
 
 \subsection{Functional programming}
 \label{sec:fp}
 
-\todo{notation with spaces for function application and curried-by-default application}
+\textit{Functional programming} is a programming paradigm highly involved with function application, function composition, and first-class functions. It is a subclass of the declarative programming paradigm, which is concerned with pure expression-based computation. Declarative programming is often considered the complement of imperative programming, which may be characterized as programming with mutable state, side effects, or statements. Purely functional programming is a subset of functional programming that deals solely with mathematically-pure functions; non-pure languages may allow varying degrees of mutable state but typically encourage the use of pure functions. Miranda, Haskell, and Core are examples of non-strict (lazy) pure functional languages.
 
-\todo{strict languages like the ML family}
+There are a number of memes\footnote{In the original sense of the word, not in the Internet sense of the word.} among functional languages that may not be familiar to the imperative programmer. Some of these memes include (but are not limited to):
+\begin{description}
+\item[Spaces for function application] This is a notational meme from $\Lambda$.
+\item[Immutability] (i.e., lack of state) is an integral part of functional programming that allows for many optimizations such as structural sharing\footnote{We implement structural sharing for integer nodes.} or fast structural equality checking.
+\item[No side-effects] Pure functional languages additionally disallow side-effects (stateful actions) such as printing or array-based operations, unless specially encapsulated. This may make debugging via printing difficult, so we need a special \texttt{Print} opcode in Core.
+\item[Curry-by-default functions and partial application] In some functional languages, functions of multiple variables may be \textit{partially applied}. For example, consider the following Haskell program.
+  \begin{minted}{haskell}
+    sum x y = x + y
+    add1 x = sum 1
+    main = add1 3
+  \end{minted}
+  This may seem to be an error, since \texttt{sum} is only applied to one argument in the definition of \texttt{add1}. However, this is allowable because \texttt{sum} will not be invoked until it is applied to the right number of arguments, which will happen after applying \texttt{add1} to 3. If we treat function application as substitution, this may be more clear: \texttt{add1 3} may be substituted to \texttt{(sum 1) 3} $\equiv$ \texttt{sum 1 3}\footnote{These are equivalent due to the operator precedence and associativity of the infix function application operator (space).}. Alternatively, we may think of any multi-arity function as being a series of nested $\lambda$-abstractions of one argument. The following is an equivalent definition of \texttt{sum}.
+  \begin{minted}{haskell}
+    sum = \x . \y . x + y
+  \end{minted}
+\item[Algebraic datatypes (ADTs)] In Haskell, you can create type definitions such as the following:
+  \begin{minted}{haskell}
+    data ListNode a = Nil | Cons a ListNode
+    data TreeNode = Leaf | Node Int TreeNode TreeNode
+  \end{minted}
+  In this example, we see that we can very naturally describe linked lists using a recursive data structure with one of two forms: the base case \texttt{Nil}, or a \texttt{Cons} cell comprising a value and another (recursive) \texttt{ListNode}. This \texttt{ListNode} datatype is also parametrically polymorphic with type parameter \texttt{a}. We see a similar case for the (non-parametric, recursive) definition of \texttt{TreeNode}. ADTs allow us to naturally and safely express composite data and variant types, and language constructs such as pattern-matching and \texttt{case} expressions allow for safe deconstruction of structured data. In Core, we will implement a simpler-to-implement system of data constructors than user-defined data constructors as shown in the example above, but it is equally as powerful.
+\end{description}
 
-\todo{haskell and miranda}
+\subsection{Terminology}
+\label{sec:terminology}
+ 
+The tutorial assumes a background in (lazy) functional programming. Instead, I assume a background in imperative programming and a basic background in programming language compilers. Below are some terms that may be useful for understanding Haskell, Core, and this project in general. These terms are fairly standard and can be easily looked up on Wikipedia or Stack Overflow, but the following are my own definitions. I thought I'd include them here to avoid confusion, since some of them have somewhat unassuming names.
 
-\todo{pure functional programming and lack of side effects}
-
-\todo{algebraic datatypes}
+\begin{description}
+\item[Lazy evaluation] A general term that describes evaluation that only occurs when the expression is used. For the purposes of this paper, it refers to \textit{normal-order} evaluation, and more particularly \textit{call-by-need} evaluation. Note that laziness (and eagerness) can refer to 
+\item[Eager evaluation] The opposite of lazy evaluation: evaluation that occurs when an expression is encountered. The eager analogue to normal-order evaluation is \textit{applicative-order} evaluation.
+\item[Normal-order evaluation] Lazy function application. In other words, the arguments to a function are not evaluated before the function body is evaluated. This is usually a feature only of pure functional languages such as Haskell or Core.
+\item[Applicative-order evaluation] Eager function application. In other words, the arguments to a function are evaluated before the function body is evaluated. This is the way that most languages are implemented, such as C or OCaml.
+\item[Strict/non-strict] More or less synonyms for eager/lazy. These terms are usually used when referring to Haskell's normal-order evaluation. Haskell allows you to control strictness using special operators\footnote{\url{https://wiki.haskell.org/Performance/Strictness\#Explicit_strictness}}. We explore controlling strictness with strict/non-strict compilation contexts in \Cref{sec:strict-context}.
+\item[Call-by-value] More or less synonymous with applicative-order evaluation.
+\item[Call-by-name] A na\"ive form of normal-order evaluation. The unevaluated expression assigned to the function argument is lazily substituted into each instance of the argument, and evaluated when encountered.
+\item[Call-by-need] A better form of normal-order evaluation, in which evaluation of arguments are memoized. Haskell and Core are call-by-need. This requires node updates and indirections as described in \Cref{sec:ti-updates}.
+\item[Supercombinator] The top-level expression construct in Haskell and Core. Roughly equivalent to a function definition. All supercombinators are always in scope, including from the body of the supercombinator or before it is declared, allowing for easy simple and mutual recursion.
+\item[$\lambda$-abstraction] Also known as $\lambda$-function, anonymous function, arrow function, function object, or simply function, in a language with first-class functions. In the $\lambda$-calculus, these typically take exactly one argument; however, in the case of Core or Haskell supercombinators or anonymous functions, these may take multiple arguments.
+\item[Function application] Another name for function invocation, usually used in the context of functional programming. Note that functions may be \textit{partially applied} in languages that support \textit{currying-by-default}.
+\item[Currying] A notational convenience in which a function of $n$ arguments may be \textit{partially-applied} by only calling it with $m<n$ arguments. This partially-applied expression itself is a (curried) function of $n-m$ arguments. When the function is applied to all $n$ arguments, then the function is applied normally. This notation fits nicely into the interpretation of nested one-argument $\lambda$-abstractions, and is nicely handled by the TI and GM machines.
+\item[Currying-by-default] A property of a programming language in which functions of multiple arguments may be curried (partially applied). Haskell, OCaml, and Core are examples of such languages. In languages without currying-by-default, currying may be achieved using nested one-argument $\lambda$-abstractions.
+\item[Product types] Composite datatypes, e.g., structs (a.k.a., objects, \texttt{records}, or \texttt{named tuples}) or tuples.
+\item[Sum types] Disjunctive datatypes, notably \textit{tagged unions}.
+\item[Algebraic datatypes (ADTs)] Composite datatypes allow for arbitrary compositions of sum (tagged union) and product (tuple) types. These are a common construct available in many strongly-typed functional languages, such as Haskell, OCaml, and Rust. These are safely deconstructed using \texttt{case} expressions and pattern-matching. Data that is formed from ADTs are known as \textit{structured data}.
+\item[Weak head normal form (WHNF)] An expression is in WHNF if the outermost expression is a data constructor or a $\lambda$-abstraction. In other words, it defines what a fully-evaluated expression is in Core. Alternatively, we can think of it as the canonical representation of a datum in Core. (There are also normal and head normal forms, which are not relevant to Core.)
+\item[Scrutinee] The expression to be matched in a \texttt{case} expression. In the case of the Core language, this must be structured data, but it usually is any pattern to match against.
+\item[Definiens] The expression that a variable is bound to.
+\item[Opcode] A.k.a. instruction. Simple statement in an imperative assembly-like language.
+\item[Runtime] For the purposes of this project, usually refers to the run-time evaluator for a programming language implementation. As opposed to ``run-time,'' which is an adjective meaning ``occurring at evaluation time.''
+\end{description}
 
 %%% Local Variables:
 %%% mode: latex
