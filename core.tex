@@ -6,6 +6,8 @@
 
 The grammar of Core is given in \Cref{fig:core-syntax}. This is reproduced from Figure 1.1 in the tutorial. $\lambda$-abstractions are omitted from the syntax, since they are only introduced in Chapter 6 with the introduction of the $\lambda$-lifting program transformation.
 
+The precedence of infix operators is provided in \Cref{tab:core-infix}, reproduced from Table 2 in the tutorial. Note that unary negation is not provided as a primitive operator; instead, the primitive unary function \texttt{negate} is provided, and it behaves like a normal function.
+
 Core may be thought of as $\Lambda$ extended with number types, arithmetic and boolean operators, structured data, \texttt{let(rec)} expressions, and \texttt{case} expressions. The top-level of a program is simply a sequence of semicolon-delimited supercombinator definitions.
 
 \begin{figure}
@@ -31,7 +33,7 @@ Core may be thought of as $\Lambda$ extended with number types, arithmetic and b
     arithop & ::= \mathtt{+} \mid \mathtt{-} \mid \mathtt{*} \mid \mathtt{/}\tag{arithmetic ops} \\
     relop & ::= \mathtt{<} \mid \mathtt{<=} \mid \mathtt{==} \mid \mathtt{\sim=} \mid \mathtt{>=} \mid \mathtt{>}\tag{comparison ops} \\
     boolop & ::= \mathtt{\&} \mid \mathtt{|}\tag{boolean ops} \\
-    var & ::= alpha\ varch_1\ \cdots\ varch_n]tag{variables} \\
+    var & ::= alpha\ varch_1\ \cdots\ varch_n\tag{variables} \\
     alpha & ::= \text{an alphabetic character}\tag{identifiers 1} \\
     varch & ::= alpha\mid digit\mid \_\tag{identifiers 2} \\
     num & ::= digit_1\ \cdots\ digit_n\tag{numbers}
@@ -39,6 +41,26 @@ Core may be thought of as $\Lambda$ extended with number types, arithmetic and b
   \caption{BNF syntax for the Core language}
   \label{fig:core-syntax}
 \end{figure}
+
+\begin{table}
+  \centering
+  \begin{tabular}{r l l}
+    \hline
+    Precedence & Associativity & Operator \\
+    \hline\hline
+    6 & left & application \\
+    5 & right & \texttt{*} \\
+    5 & none & \texttt{/} \\
+    4 & right & \texttt{+} \\
+    4 & none & \texttt{-} \\
+    3 & none & \texttt{==}, \texttt{$\sim$=}, \texttt{>}, \texttt{>=}, \texttt{<}, \texttt{<=} \\
+    2 & right & \texttt{\&} \\
+    1 & right & \texttt{|} \\
+    \hline
+  \end{tabular}
+  \caption{Core infix operator precedence and associativity}
+  \label{tab:core-infix}
+\end{table}
 
 \subsection{Dynamic semantics}
 \label{sec:dynamic-semantics}
@@ -101,9 +123,7 @@ if scrut t f =
   \label{fig:standard-representations}
 \end{figure}
 
-This forms part of our \textit{prelude} (builtin definitions) for Core, and these definitions may be overridden at any time. Additionally, we provide a sample standard library in the \texttt{examples/gmprelude.core} file in the GitHub repository.
-
-We also include many other useful definitions, such as common combinators, arithmetic aggregation operators, list/stream operations, etc. in the prelude. These may be found in \Cref{sec:core-stdlib}.
+This forms part of our \textit{prelude} (builtin definitions) for Core, and these definitions may be overridden at any time. Additionally, we provide a sample standard library of useful definitions, such as common combinators, arithmetic aggregation operators, list/stream operations, etc. in the file \texttt{examples/gmprelude.core}. We call this the standard library or extended prelude. These may be found in \Cref{sec:core-stdlib}.
 
 \subsection{Sample programs}
 \label{sec:sample-programs}
@@ -113,17 +133,28 @@ Sample Core code may be found in \Cref{sec:code-samples}.
 \subsection{Lexer}
 \label{sec:lexer}
 
-\todo{very simple tokenization}
+Tokenization (lexing) of the Core language is fairly simple. There are almost no reserved keywords, except \texttt{Pack}, \texttt{let}, and \texttt{case}, and the number of expression types is small. Identifiers and numeric tokens are easy to identify using the grammar rules. Other symbols (except whitespace, which is discarded) are counted as one- or two-letter operators. Lines beginning with \texttt{--} are treated as comments and discarded\footnote{This is the Haskell comment syntax.}.
 
 \subsection{Parser}
 \label{sec:parser}
 
-\todo{build up LL(1) parser from useful subparsers}
+The parser described in the tutorial is a fairly simple LL(1) recursive-descent parser, built from scratch. Following the functional way\texttrademark{}, this is built up from a set of primitive subparsers in a very composable way. Each (sub)parser is a function that takes a set of tokens as input, and returns a set of transformed matches and remaining tokens. We first define the primitive subparsers, which may recognize forms such as numeric literals, identifiers, or a specified string. Then, we develop two compositional parsers, \texttt{pAlt} and \texttt{pThen}. \texttt{pAlt} takes two subparsers and returns a parser that will match either subparser (and thus may return multiple matches). \texttt{pThen} takes two subparsers and matches only if the first subparser matches, and then the second subparser matches on the remaining tokens. By composing these generic subparsers, we build up a parser for Core. The top-level parser parses the whole program and returns the first successful parse. There may be multiple parses due to the \textit{dangling-else problem}.
+
+The tutorial goes into significant detail about practical considerations when implementing a parser, such as \textit{left recursion} (to prevent infinite recursion), implementing infix operator precedence and associativity (by splitting the $expr$ production into separate productions for each precedence level), and the \textit{dangling-else problem} (which is a parsing ambiguity that arises in \textit{case} expressions). For brevity, I omit a thorough discussion of these topics.
 
 \subsection{Pretty-print utility}
 \label{sec:pretty-print}
 
-\todo{constant-time append with indentation, only linear-time rendering}
+The tutorial describes a pretty-print utility that is useful for performance and presentation purposes. This is not only useful for printing expressions, but also for any other debugging output, such as printing the program state.
+
+A na\"ive approach to printing information would be simply performing string concatenation. However, this is a $O(n)$ process on each string concatenation (and thus roughly $O(mn)$ with a large number of concatenations $m$), and not efficient for very large outputs. Additionally, we would like the ability to easily indent chunks of the formatted output. This is where the \texttt{ISeq} data structure comes in\footnote{I believe the ``I'' stands for ``indentation,'' but I do not know. I have \href{https://stackoverflow.com/q/70888519/2397327}{asked on Stack Overflow} but have not received a response.}. Stringbuilders objects (e.g., Java's \texttt{java.lang.StringBuilder}) are able to efficiently concatenate strings, but do not have the ability to provide the indentation layout that we desire.
+
+\texttt{ISeq} works by storing the built string as a tree of appended strings. The string concatenation process then becomes the $O(n)$ process of creating an \texttt{IAppend seq1 seq2} node with the two subsequences. Additionally, indented blocks may be created using the \texttt{IIndent seq} node, which takes a subsequence to indent at the current column number. As a result, building a formatted string is very efficient, since each of these operations is constant time.
+
+The \texttt{ISeq} is then \textit{rendered} to a string using the \texttt{iDisplay} method. This performs the single string concatenation. This method implements indentation by always keeping track of column count. Rendering the \texttt{ISeq} is a $O(n)$ operation as desired.
+
+The \texttt{Iseq} data structure is very general and may be used for pretty-printing purposes outside of this project.
+
 %%% Local Variables:
 %%% mode: latex
 %%% TeX-master: "main"
