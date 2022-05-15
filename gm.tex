@@ -5,6 +5,277 @@ The G-Machine is an abstract machine with a very similar idea to the TI machine 
 
 This stack-based machine is desirable for several efficiency reasons: it requires a simpler (smaller) runtime; it does not require the re-traversal of a supercombinator's body expression on each expression; and the runtime does not require an expression-level representation of the language.
 
+\subsection{Sample compilation}
+\label{sec:gm-walkthrough}
+
+We first try to develop an intuition of the compilation process. The example below is given in section 3.1.1 of the tutorial.
+
+\begin{minted}{text}
+f g x = K (g x)
+\end{minted}
+
+This compiles down to the following opcode sequence.
+
+\begin{verbatim}
+Push 1
+Push 1
+Mkap
+Pushglobal K
+Mkap
+Update 3
+Pop 3
+Unwind
+\end{verbatim}
+
+These instructions should be indicative of a stack-based machine. We can envision the state of the program after each instruction. Assume that the supercombinator was invoked like so: \texttt{f I 2}. Thus we expected \texttt{I} and \texttt{2} to be already pushed onto the stack.
+
+Note that this uses the updated addressing mode described in \Cref{sec:gm-addressing-mode}. Thus the stack does not initially contain the application spine, but rather only the root of the supercombinator application and the arguments, pushed in reverse order.
+
+We omit the dump from this evaluation trace; it is not relevant here, since there are no primitive operators.
+
+\begin{verbatim}
+-- State 0: initial program state (upon applying f I 2)
+
+Instruction queue: Push 1; Push 1; Mkap; Pushglobal K; Mkap; Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+\end{verbatim}
+
+Node 0 represents the root of the supercombinator application, which is represented by the following graph:
+
+\begin{verbatim}
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+\end{verbatim}
+
+We will now walk through the instruction sequence. The effect of each instruction should be relatively straightforward, since they are relatively simple stack instructions.
+
+\begin{verbatim}
+-- State 1: after (first) Push 1
+Instruction queue: Push 1; Mkap; Pushglobal K; Mkap; Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+3. #2
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+-- State 2: after (second) Push 1
+Instruction queue: Mkap; Pushglobal K; Mkap; Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+3. #2
+4. #4
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+-- State 3: after (first) Mkap
+Instruction queue: Pushglobal K; Mkap; Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+3. #7
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+#7 NAp #4 #2
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+   #7(@)
+   /   \
+#4(I)  #2(2)
+
+-- State 4: after Pushglobal K
+Instruction queue: Mkap; Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+3. #7
+4. #5
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+#7 NAp #4 #2
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+   #7(@)
+   /   \
+#4(I)  #2(2)
+
+-- State 5: after (second) Mkap
+
+Instruction queue: Update 3; Pop 3; Unwind
+
+Stack:
+0. #0
+1. #2
+2. #4
+3. #8
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+#7 NAp #4 #2
+#8 NAp #5 #7
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+   #8(@)
+   /   \
+#5(K)  #7(@)
+       /   \
+    #4(I)  #2(2)
+
+-- State 6: after Update 3
+
+Instruction queue: Pop 3; Unwind
+
+Stack:
+0. #8
+1. #2
+2. #4
+3. #8
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+#7 NAp #4 #2
+#8 NAp #5 #7
+
+Graph(s):
+         #0(@)
+        /     \
+     #3(@)    #2(2)
+    /   \
+#3(f)   #4(I)
+
+   #8(@)
+   /   \
+#5(K)  #7(@)
+       /   \
+    #4(I)  #2(2)
+
+-- State 7: after Pop 3
+Instruction queue: Unwind
+
+Stack:
+0. #8
+
+Heap:
+#0 NAp #1 #2
+#1 NAp #3 #4
+#2 NNum 2
+#3 NSupercomb f
+#4 NSupercomb I
+#5 NSupercomb K
+#6 NSupercomb main
+#7 NAp #4 #2
+#8 NAp #5 #7
+
+Graph(s):
+   #8(@)
+   /   \
+#5(K)  #7(@)
+       /   \
+    #4(I)  #2(2)
+\end{verbatim}
+
+As we can see, the graph constructed by the compiled opcodes produces the result as instantiation.
+
+The last instruction is the most complicated. This is the \texttt{Unwind} opcode, which corresponds to the unwinding action discussed in the TI evaluator (setting up the instructions for the next instantiation). Up until now, all of the instructions have been used to create the graph that would have been created through instantiation. After the \texttt{Unwind} opcode, we expect to have a setup similar to state 0 for evaluation to continue again.
+
 \subsection{List of opcodes}
 \label{sec:gm-opcodes}
 
@@ -18,7 +289,7 @@ The list of opcodes of the abstract stack machine that the G-Machine compiles to
 \item[\texttt{Pop} $n$] Pop $n$ elements from the stack.
 \item[\texttt{Alloc} $n$] Push $n$ invalid addresses onto the stack, or decrease the stack pointer by $n$ \footnote{This is used for \texttt{letrec} expressions. These addresses initially point to an invalid node, and will be updated by the evaluation of the definiens.}.
 \item[\texttt{Slide} $n$] ``Slide'' the top element of the stack up $n$ slots. In other words, the $(n+1)$-th element of the stack will be replaced with the top of the stack, and then $n$ elements will be popped.
-\item[\texttt{Unwind}] Same as in the TI implementation \Cref{sec:ti-unwind}.
+\item[\texttt{Unwind}] Similar in function to unwinding in the TI implementation \Cref{sec:ti-unwind}. Finds the next redex along the spine. Also performs the stack restructuring described in \Cref{sec:gm-addressing-mode}. When the supercombinator or primitive is found, adds the compiled opcodes to the instruction queue.
 \item[\texttt{Mkap}] Pop two elements from the stack, allocate a new application node (with the first popped element in function position, and the second popped element in argument position) and push the application node onto the stack.
 \item[\texttt{Eval}] Strictly evaluate the element on the top of the stack to WHNF on a new stack (frame)\footnote{This pushes a new stack on the dump and evaluates the node on the new stack. This is more or less equivalent to a function call in the conventional procedural ABIs.}.
 \item[\texttt{Add}, \texttt{Sub}, \texttt{Mul}, \texttt{Div}, \texttt{Neg}] Arithmetic binary and unary operators. Assumes the two elements on the top of the stack are evaluated to integers (otherwise will crash the program). Pops the top two elements and leaves a number node on the top of the stack representing the arithmetic result.
@@ -29,6 +300,15 @@ The list of opcodes of the abstract stack machine that the G-Machine compiles to
 \item[\texttt{Print}] Output the top element on the stack. Assumes that it is a data node (integer or structured data node). Recursively generates additional \texttt{Print} and \texttt{Eval} opcodes for structured data.
 
 \end{description}
+
+\subsection{A simpler stack addressing mode}
+\label{sec:gm-addressing-mode}
+
+In the template instantiation, the spine was pushed onto the stack. This means that for a supercombinator with $n$ arguments, the spine has $n$ \texttt{NAp} nodes, followed by the supercombinator node at the top of the stack. In order to get the $m$-th argument, we traverse up $(m+1)$ nodes, and have to perform an extra lookup on the \texttt{NAp} to get the address of the argument.
+
+Mark 3 of the G-machine proposes a simpler stack addressing scheme. To prevent extra indirections, we restructure the stack during an \texttt{Unwind} instruction so that only the arguments for a supercombinator are left on the stack, rather than the \texttt{NAp} nodes. The exception is that the root of the supercombinator application redex is left on the stack, so that it may be updated with the evaluation result of the redex. This method extends naturally to \texttt{let(rec)} expressions.
+
+This aligns with the x86 ABI, which involves pushing arguments onto the stack in reverse order. Of course, there is no notion of application nodes in a low-level language. The only difference is the root of the redex remaining under the arguments on the stack.
 
 \subsection{Compilation schemes}
 \label{sec:compilation-schemes}
