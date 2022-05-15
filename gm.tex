@@ -313,9 +313,36 @@ This aligns with the x86 ABI, which involves pushing arguments onto the stack in
 \subsection{Compilation schemes}
 \label{sec:compilation-schemes}
 
-\todo{list each compilation scheme, describe it, show its behavior on expression types}
+Compilation is divided into several \texttt{compilation schemes}. A high-level overview of the compilation schemes is shown below\footnote{N.B. I have no idea why these evaluation schemes are named the way they are. There is no indication in the textbook, or anywhere online, as far as I can tell.}. A list of rules for these compilation schemes may be found in \cite{johnsson1984efficient}.
 
-\todo{n.b. i have no idea how these evaluation schemes are named}
+\begin{description}
+\item[$\mathcal{SC}$ compilation scheme] Compile a supercombinator. Wrapper around $\mathcal{R}$
+\item[$\mathcal{R}$ compilation scheme] Strictly compile a supercombinator body using the $\mathcal{E}$ compilation scheme, and then unwind the stack.
+\item[$\mathcal{C}$ compilation scheme] Compile an expression in a lazy compilation context.
+\item[$\mathcal{E}$ compilation scheme] Compile an expression in a strict compilation context.
+\item[$\mathcal{D}$ compilation scheme] Compile a \texttt{case} expression.
+\item[$\mathcal{A}$ compilation scheme] Compile an alternative in a \texttt{case} expression.
+\end{description}
+
+For sake brevity, I will not describe all of the compilation schemes in detail. Instead, I will only discuss the compilation schemes for the Mark 1 G-machine, which should give a good idea of how the compilation schemes work. These are shown in \Cref{fig:gm-compilation-schemes}, which reproduces Figure 3.3 from the tutorial.
+
+The rules for $\mathcal{SC}$ and $\mathcal{R}$ are simple; these are drivers for code generation for top-level supercombinators. The $\mathcal{C}$ compilation scheme is the most interesting. We see how functions, variables, and integers are compiled. $\rho$ is an environment mapping variable names to offsets on the stack \footnote{This is similar to \texttt{\%rbp}-relative addressing for local variables.}. Global variables and numbers that appear in the expression are simply pushed onto the stack using the \texttt{Pushglobal} and \texttt{Pushint} opcodes. Local variables are looked up in the environment, and a \texttt{Push} opcode is generated. Lastly, function application is generated postfix-style. This compiles the argument, then the function. After these two are compiled, a \texttt{Mkap} instruction is generated to create the application node from the top two elements on the stack. This covers the basic operations for the $\lambda$-calculus logic.
+
+A full description of the full compilation schemes for the Mark 6 G-machine would be too long to include here. Mark 3 implements \texttt{let(rec)} expressions, which are straightforward but tedious. Mark 4 implements arithmetic (which introduces the \texttt{Eval} opcode to strictly evaluate an element on the top of the stack by using the dump). Mark 5 implements the strict $\mathcal{E}$ compilation scheme described in \Cref{sec:strict-context}. Mark 6 implements structured data, which is fairly complicated and has some nuances regarding strict compilation and unsaturated constructors that require program transformations or other tricks\footnote{See section 3.8.7 or exercise 3.38 in the tutorial.}.
+
+\begin{figure}
+  \centering
+  \begin{align*}
+    \mathcal{SC}\llbracket f\ x_1\ \cdots\ x_n=e\rrbracket &= \mathcal{R}\llbracket e\rrbracket\ [x_1\mapsto 0,\cdots,x_n\mapsto n-1]\ n \\
+    \mathcal{R}\llbracket e\rrbracket\ \rho\ d &= \mathcal{C}\llbracket e\rrbracket\ \rho\ \mathtt{++}\ [\mathtt{Slide}\ d+1,\mathtt{Unwind}] \\
+    \mathcal{C}\llbracket f\rrbracket\ \rho &= [\mathtt{Pushglobal}\ f] \\
+    \mathcal{C}\llbracket x\rrbracket\ \rho &= [\mathtt{Push}\ (\rho x)] \\
+    \mathcal{C}\llbracket i\rrbracket\ \rho &= [\mathtt{Pushint}\ i] \\
+    \mathcal{C}\llbracket e_0\ e_1\rrbracket\ \rho &= \mathcal{C}\llbracket e_1\rrbracket\ \rho\ \mathtt{++}\ \mathcal{C}\llbracket e_0 \rrbracket\ \rho^{+1}\ \mathtt{++}\ [\mathtt{Mkap}]
+  \end{align*}
+  \caption{G-machine Mark 1 compilation schemes}
+  \label{fig:gm-compilation-schemes}
+\end{figure}
 
 \subsubsection{Non-strict vs. strict compilation context}
 \label{sec:strict-context}
