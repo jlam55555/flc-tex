@@ -315,10 +315,60 @@ This aligns with the x86 ABI, which involves pushing arguments onto the stack in
 
 \todo{list each compilation scheme, describe it, show its behavior on expression types}
 
+\todo{n.b. i have no idea how these evaluation schemes are named}
+
 \subsubsection{Non-strict vs. strict compilation context}
 \label{sec:strict-context}
 
-\todo{fit this in nicely with the previous section???}
+Mark 4 of the G-machine introduces primitives into the language, and is the first iteration of the G-machine in which strictness becomes relevant. The ordinary compilation of an primitive operation such as addition produces the following opcode sequence.
+
+\begin{verbatim}
+Push 1
+Eval
+Push 1
+Eval
+Add
+Update 2
+Pop 2
+Unwind
+\end{verbatim}
+
+However, this seems like an awful lot of work to perform a simple addition operation. The book motivates this with the simple program:
+
+\begin{minted}{text}
+main = 3+4*5
+\end{minted}
+
+Ordinarily, this program will compile to the following program. In addition to this opcode sequence, each of the function applications will spawn the eight opcodes shown above.
+
+\begin{verbatim}
+Pushint 5
+Pushint 4
+Pushglobal "*"
+Mkap
+Mkap
+Pushint 3
+Pushglobal "+"
+Mkap
+Mkap
+Eval
+\end{verbatim}
+
+However, we can compile this to the following set of opcodes by inspection, which is much shorter, and doesn't include any function applications or \texttt{Eval} opcodes:
+
+\begin{verbatim}
+Pushint 5
+Pushint 4
+Mul
+Pushint 3
+Add
+\end{verbatim}
+
+It should not be surprising that strict code may be more efficient than non-strict code. This gives rise to the $\mathcal{E}$ evaluation scheme described in \Cref{sec:compilation-schemes}. However, we cannot always generate strict code, or else defeat the purpose of a lazy language. In particular, we cannot generate strict code for function arguments or definiens in a \texttt{let(rec)} expression, since these may never be evaluated and evaluating them strictly would make evaluation not normal-order.
+
+The intuition behind the $\mathcal{E}$ compilation scheme is that any expression that lies directly in a supercombinator body (i.e., not in a \texttt{let(rec) definiens or in a function argument}) must be evaluated when the supercombinator is evoked. We compiled such expressions in the \texttt{strict evaluation context} $\mathcal{E}$. Other expressions are compiled in the \texttt{lazy evaluation context} $\mathcal{C}$. Additionally, we do not need \texttt{Eval} opcodes when in the strict compilation context, since we can recursively deduce that all subexpressions are strictly evaluated.
+
+Strict and lazy evaluation is purely for improvements in performance, and do not (should not) change the behavior of the program. The current mechanism to determine when a strict evaluation context is acceptable is very simple; the tutorial cites other research on the material such as \cite{burn1991lazy}. Haskell also allows users to explicitly specify strict evaluation of an expression.
 
 \subsection{Evaluator}
 \label{sec:evaluator}
@@ -331,11 +381,6 @@ The evaluator implements the abstract stack machine. Each of the opcodes describ
 To illustrate the simplicity of the G-Machine's runtime, the stack machine of the Mark 1 of the G-Machine was implemented in NASM x86-64 assembly code. Each stack machine opcode was implemented using an assembly macro. Supercombinator node definitions are also implemented with a macro. This can be found on GitHub at \href{https://github.com/jlam55555/flc-transpiler}{jlam55555/flc-transpiler}.
 
 I did not have time to implement later Marks of the G-Machine in assembly code, and I believe that it is a reasonable project for future work. However, the increased complexity of later Marks will likely be convenienced by small helper functions written in C.
-
-\subsection{Sample compilations and evaluations}
-\label{sec:compiler-examples}
-
-\todo{this section}
 
 %%% Local Variables:
 %%% mode: latex
