@@ -1,37 +1,184 @@
 \section{Template instantiation (TI) evaluator}
 \label{sec:ti}
 
-\todo{only cover this briefly, relation to the GM machine}
+Template instantiation is only briefly reviewed in the tutorial. A more full description is given in Chapters 11 and 12 of ``The implementation of functional programming languages'' \cite{peyton1987implementation}. I will do my best to provide an intuitive high-level overview.
+
+\subsection{Intuitive walkthrough of a TI evaluation}
+\label{sec:ti-walkthrough}
+
+The principal idea behind lazy evaluation is that an expression is only evaluated when necessary. We represent an expression using a graph, and evaluate the program by repeatedly reducing the graph until we are left with a data value (a final program state).
+
+For now, let us consider two sample programs, shown below.
+
+\begin{minted}{text}
+-- Program A
+f x = x + 1
+main = f 2
+  
+-- Program B
+square x = x * x ;
+main = square (square 3)
+\end{minted}
+
+We may represent any supercombinator using a graph. For example, the graphs for \texttt{square} and \texttt{main} from Program B are shown below. The \texttt{@} symbol is used to represent function application. Due to automatic function currying, the evaluation of a multi-arity function application \texttt{g x y z} actually is implemented as a series of multiple function applications of one variable, i.e., \texttt{((g x) y) z}. Infix binary operators appear as functions of two variables in the call graph. Also note that if the same variable is referenced multiple times in the graph, the nodes will point to the same instance -- this is important for call-by-need evaluation.
+
+\begin{verbatim}
+-- square
+    @
+   / \
+  @   \
+ / \---x
+*
+
+-- main
+-- Program B state 0
+     @
+    / \
+   /   @
+  /   / \
+square   3
+\end{verbatim}
+
+There are two types of reductions. We may either reduce a supercombinator (function) application, or a primitive operation. The reduction of a supercombinator means replacing the graph with the supercombinator and its arguments with the supercombinator's graph. The reduction of a primitive (e.g., arithmetic, relational, or boolean operators) means performing the primitive operation.
+
+Consider Program A for an example of a supercombinator reduction. The graphs for \texttt{main} and \texttt{f} are shown below.
+
+\begin{verbatim}
+-- f
+    @
+   / \
+  @   1
+ / \
++   x
+
+-- main
+-- Program A state 0 (initial program state)
+  @
+ / \
+f   2
+\end{verbatim}
+
+The program begins with the graph of \texttt{main}. Clearly, we have to reduce \texttt{f} next. We do this by \textit{instantiating} the graph of \texttt{f}, and substituting the arguments (in this case, $x\mapsto 2$) in the graph. Thus the next evaluation state would be:
+
+\begin{verbatim}
+-- Program A state 1
+    @
+   / \
+  @   1
+ / \
++   2
+\end{verbatim}
+
+At this point, we see that the next reduction would be the application of \texttt{+} to arguments \texttt{2} and \texttt{1}, i.e., \texttt{(+ 2) 1} or \texttt{2 + 1}. We use the underlying addition operator in Haskell, and replace the addition operation with the result. At this point, there are no more redexes in the program, so we are done and the program terminates.
+
+\begin{verbatim}
+-- Program A state 2 (final program state)
+3
+\end{verbatim}
+
+The TI always chooses the outermost reducible expression (redex) to reduce; this evaluation order is called \textit{normal-order evaluation}. In other words, if we consider Program B again, we see that there are two redexes that we can reduce from the initial program state: the outer or the inner \texttt{square}. If we reduce the inner \texttt{square} first, then this is \textit{applicative-order} (strict) evaluation. However, we wish for \textit{normal-order} (lazy) evaluation, so we reduce the outer expression first.
+
+The way we find the outermost supercombinator or primitive is by walking the left-branch of application nodes; this list of nodes is called the \textit{spine} of the graph. The spine will be stored on the stack; we start from the root, and push the application nodes of the spine onto the stack until we reach a supercombinator or primitive. The spine (and thus the stack) also contains the list of arguments passed to a supercombinator or primitive. With this in mind, the next program state would be:
+
+\begin{verbatim}
+-- Program B state 1
+    @
+   / \
+  @   \
+ / \--!@
+*     / \
+square   3
+\end{verbatim}
+
+At this point, we would like to reduce the \texttt{*}, but there is a problem. The arguments have not been evaluated yet. Thus a primitive operator is only a redex if all of its arguments have been evaluated (to WHNF). This is not the case for this program: the root of our next redex is the node marked \texttt{!@}. Note that this isn't on the spine, so we create a new temporary graph with which to evaluate the arguments before returning to the evaluation of the \texttt{*} primitive. The node marked \texttt{!@} becomes the root of our new graph, and the old graph is saved.
+
+\begin{verbatim}
+-- Program B state 2
+      @
+     / \
+square  3
+
+-- Program B state 3
+    @
+   / \
+  @   \
+ / \---3
+*
+
+-- Program B state 4
+9
+\end{verbatim}
+
+The multiplication in state 3 is a redex since both arguments are fully evaluated to WHNF. Thus, this reduces down to a number. Now, we are not done, since we still have to finish the initial graph. Thus, we ``pop'' the old graph from state 1 off of the ``stack of old graphs,'' and replace the unevaluated argument at the node marked \texttt{!@} with the evaluated result, 9.
+
+\begin{verbatim}
+-- Program B state 5
+    @
+   / \
+  @   \
+ / \---9
+*
+
+-- Program B state 6
+81
+\end{verbatim}
+
+At this point, there are no more ``old graphs,'' so evaluation terminates and we have the result.
+
+This section is intended to give a high-level overview of the TI evaluator. The following sections will provide more clarity and be more precise.
 
 \subsection{The TI abstract machine}
 \label{sec:ti-machine}
 
-\todo{process: instantiate and unwind}
+The TI machine is represented using an \textit{abstract state machine}, and evaluation is described using \textit{state transitions}. The state comprises a \textit{stack}, a \textit{heap}, and a \textit{dump}.
 
-\subsubsection{Instantiation}
-\label{sec:ti-instantiation}
+The stack holds the spine of the (current) graph. We use this to find the next redex during the unwinding process, and to retrieve the list of arguments for a primitive or supercombinator. This will be discussed in \Cref{sec:ti-instantiation,sec:ti-unwind}. The heap stores all of the (automatically-allocated) nodes used throughout. This will be discussed in \Cref{sec:ti-updates,sec:ti-memory}. The dump is a stack of stacks, and stores the ``old graphs'' or ``old spines'' when we need to strictly evaluate an argument, as shown in the Program B example in \Cref{sec:ti-walkthrough}.
 
-\todo{conditionals}
+The TI evaluation process alternates between unwinding and instantiation. We will describe these in \Cref{sec:ti-unwind,sec:ti-instantiation}.
 
 \subsubsection{Unwinding}
 \label{sec:ti-unwind}
 
-\subsubsection{Updates and indirections for call-by-need}
-\label{sec:ti-updates}
+Unwinding is the main evaluation semantics of the TI abstract machine. It dispatches an action based on the element on the top of the stack, and thus is easy to model using a state transition machine\footnote{We will see that this is not the case of instantiation, which puts it at odds with the state transition formalization. However, the G-machine will compile the instantiation step into a series of small, relatively-atomic opcodes.}.
+
+It is the process of finding the next redex and choosing which action to perform. In the simplest form, it works by traversing the spine until we find a supercombinator. The state transition rules are very simple. If we encounter a number on the spine and the stack is empty, then evaluation is complete and the program terminates. If we encounter a function application node, we push the application node onto the stack and continue unwinding the left node (continue unwinding the spine). Lastly, if we encounter a supercombinator node, then we instantiate its body using the arguments that are currently on the stack.
+
+This gets more complicated when primitive operators are introduced. If we encounter a primitive operator, we first check if the argument node(s) are evaluated to WHNF. If they are already evaluated, then the primitive operator is a redex and we perform the operation. If an argument is not a redex, then we push the current stack onto the dump, and set the argument as the singleton element of the new stack, and use this to evaluate the argument. Once the argument is fully-evaluated, then we pop the old stack from the dump, and resume evaluation of the primitive operator.
+
+This may remind you of a call stack. In fact, the dump is very similar to using a call stack, and this similarity will be accentuated when we encounter the \texttt{Eval} opcode in the G-machine, which performs the analogous operation. Moreover, the dump may be implemented like the call stack by pushing and popping \textit{stack frames}; we do not need a separate stack data structure. The difference is that stack frames on the dump are only created when we need to strictly evaluate an argument, rather than every time a function is invoked as is the case for a call stack; this naturally allows for tail-call optimization (TCO)\footnote{TCO allows for arbitrary recursion depth if a function is tail-recursive. This is not true of regular call-stack-based languages, since each recursive call will generate a new stack frame and quickly overflow the stack. However, it can be implemented on a call stack using techniques such as trampolines, but this is much messier and less elegant than our natural TI interpretation of graph reduction.}.
+
+\subsubsection{Instantiation}
+\label{sec:ti-instantiation}
+
+Instantiation is the process of creating a supercombinator graph when a supercombinator is applied. The process is fairly intuitive from a high-level perspective (e.g., it is visually clear from the examples in \Cref{sec:ti-walkthrough} how instantiation works). We may say that instantiation involves copying the graph structure of a supercombinator, and falling in any instances of its argument variables using the parameters used to invoke the supercombinator.
+
+Instantiation is also fairly easy to implement in native Haskell code. It involves recursing through the Core language expression (represented as an AST), and building the corresponding call graph out of variable, numeric literal, and application nodes in the heap.
+
+As mentioned in an earlier footnote, instantiation is at odds with the state machine representation because it is largely an atomic action and cannot be easily decomposed into simpler steps to run on a simpler runtime. The main difference between the TI and the G-machine implementations is that the instantiation step (the graph creation) is compiled to a series of opcodes in the G-Machine. The G-machine also allows us to discard the AST representation after compilation, since we don't need the instantiation function which operates on Core language expressions.
+
+\subsubsection{Advanced instantiations}
+\label{sec:ti-advanced-instantiation}
+
+\todo{let, letrec expressions}
+
+\todo{structured data}
 
 \subsubsection{Memory model}
 \label{sec:ti-memory}
 
-\subsection{Sample evaluations}
-\label{sec:ti-examples}
+The memory model of the TI is very simple. The heap is simply an abstract data structure mapping addresses to nodes. The interface for this data structure has methods to allocate, lookup, and free nodes. Nodes are automatically allocated on demand. Nodes are never freed in my implementation, since I did not implement garbage collection; however, the \textit{mark-scan} and \textit{two-space} garbage collection methods are developed at the end of the chapter. This heap data structure will remain the same for the G-machine implementation.
 
-\todo{sample updating}
+\subsubsection{Updates and indirections for call-by-need evaluation}
+\label{sec:ti-updates}
 
-\todo{sample lazy evaluation}
+Updates and indirections are two topics that are necessary to implement efficient call-by-need normal-order evaluation. Without updating nodes after they have been evaluated, repeated usages of a node will result in repeated evaluations, resulting in an inefficient call-by-name normal-order evaluation.
 
-\todo{tco}
+\todo{working here -- show sample programs and why these are necessary}
 
-\todo{arithmetic}
+\subsection{Walkthrough revisited}
+\label{sec:ti-walkthrough-revisited}
+
+\todo{revisit the walkthrough example, now using the full knowledge from other sections}
 
 %%% Local Variables:
 %%% mode: latex
