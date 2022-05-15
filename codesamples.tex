@@ -16,7 +16,29 @@ See \href{https://projecteuler.net/problem=1}{Project Euler 1}. This requires th
 
 \inputminted[frame=single]{text}{core/pe1.core}
 
-\todo{additional examples, such as lazy infinite streams, twice twice twice}
+\subsection{\texttt{letrec} demonstration}
+\label{sec:core-letrec}
+
+The following Core program demonstrates the use of \texttt{letrec}. It also demonstrates a Church encoding of pairs.
+
+\inputminted[frame=single]{text}{core/letrec.core}
+
+\subsection{Infinite streams}
+\label{sec:core-streams}
+
+It is easy to generate infinite streams using generator functions. Due to the laziness of Core, these only compute as many elements as are forced.
+
+Alternatively, as in Haskell, it is easy to introduce infinite streams using by implicitly \href{https://wiki.haskell.org/Tying_the_Knot}{``tying the knot,''} due to the simplicity of (mutual) recursion.
+
+\inputminted[frame=single]{text}{core/streams.core}
+
+\subsection{Twice twice twice}
+\label{sec:core-twice-twice-twice}
+
+This is a program that has boggled my mind for some time. It illustrates partial application in Core, and has a slightly unusual time complexity. This was inspired by Exercise 2.13 from the tutorial.
+
+\inputminted[frame=single]{text}{core/twice.core}
+
 
 %%% Local Variables:
 %%% mode: latex

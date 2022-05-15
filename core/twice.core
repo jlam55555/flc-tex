@@ -1,0 +1,10 @@
+twice f x = f (f x)
+inc x = x + 1
+
+p1 = 0                       -- returns 0
+p2 = inc 0                   -- returns 1
+p3 = twice inc 0             -- returns ?
+p4 = twice twice inc 0       -- returns ?
+p5 = twice twice twice inc 0 -- etc.
+
+main = p5                    -- try p1, p2, ...

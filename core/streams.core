@@ -1,0 +1,6 @@
+-- Natural numbers using a recursive generator function
+numsFrom x = Cons x (numsFrom (x + 1)) ;
+nats = numsFrom 0 ;
+
+-- Tying the knot
+ones = Cons 1 ones ;
