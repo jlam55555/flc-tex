@@ -159,9 +159,11 @@ As mentioned in an earlier footnote, instantiation is at odds with the state mac
 \subsubsection{Advanced instantiations}
 \label{sec:ti-advanced-instantiation}
 
-\todo{let, letrec expressions}
+So far, we have covered the instantiation of the core forms from $\Lambda$: functions, variables, function application, and integers. These are covered in Mark 1 of the TI evaluator. There are additional expression forms dealt with in Marks 2 and 5: these are described below in brief.
 
-\todo{structured data}
+Mark 2 introduces the instantiation of \texttt{let(rec)} expressions. This involves instantiating each of the definiens and augmenting the environment. The recursive form involves evaluating the definiens in an environment that includes the \texttt{letrec} bindings. This is a relatively straightforward task.
+
+Mark 5 introduces the instantiation of structured data. However, there is difficulty instantiating \texttt{case} expressions\footnote{This is exercise 2.18 in the tutorial. I am actually not too sure what the answer should be, and I have posted my best guess as \href{https://stackoverflow.com/a/71488865/2397327}{a Stack Overflow question and answer}. My guess is that there is no mechanism to destructure structured data at instantiation-time (which is separate from evaluation-time), and that each of the specialized deconstruction methods have ``workarounds'' for this problem.}, so a limited form of destructuring using builtin functions \texttt{caseList}, \texttt{casePair}, and \texttt{if} are used to provide conditional statements.
 
 \subsubsection{Memory model}
 \label{sec:ti-memory}
@@ -171,14 +173,7 @@ The memory model of the TI is very simple. The heap is simply an abstract data s
 \subsubsection{Updates and indirections for call-by-need evaluation}
 \label{sec:ti-updates}
 
-Updates and indirections are two topics that are necessary to implement efficient call-by-need normal-order evaluation. Without updating nodes after they have been evaluated, repeated usages of a node will result in repeated evaluations, resulting in an inefficient call-by-name normal-order evaluation.
-
-\todo{working here -- show sample programs and why these are necessary}
-
-\subsection{Walkthrough revisited}
-\label{sec:ti-walkthrough-revisited}
-
-\todo{revisit the walkthrough example, now using the full knowledge from other sections}
+Updates and indirections are two topics that are necessary to implement efficient call-by-need normal-order evaluation. Without updating nodes after they have been evaluated, repeated usages of a node will result in repeated evaluations, resulting in an inefficient call-by-name normal-order evaluation. When a node is updated, it is replaced with an \textit{indirection node} (essentially, a pointer or reference) to the evaluation result. The indirection node is a necessary part of the updating to prevent nodes from being copied (and thus inefficiently evaluating multiple times). This is implemented in Mark 3 of the TI evaluator. The motivation for updating and indirection nodes is provided in section 2.1.5 of the tutorial, and we do not reproduce it here since it is fairly intuitive.
 
 %%% Local Variables:
 %%% mode: latex
